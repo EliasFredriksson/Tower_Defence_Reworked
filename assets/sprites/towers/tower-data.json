@@ -1,0 +1,32 @@
+{
+    "Cannon": {
+        "image": "Cannon.png",
+        "towerSize": 0.2,
+        "baseSize": 0.2,
+        "cost": 100,
+        "damage": 1,
+        "range": 150,
+        "firerate": 0.6,
+        "projectile": "bullet"
+    },
+    "Rifle": {
+        "image": "MG.png",
+        "towerSize": 0.2,
+        "baseSize": 0.15,
+        "cost": 200,
+        "damage": 1,
+        "range": 120,
+        "firerate": 0.1,
+        "projectile": "bullet_mg"
+    },
+    "Missile": {
+        "image": "Missile_Launcher.png",
+        "towerSize": 0.25,
+        "baseSize": 0.25,
+        "cost": 500,
+        "damage": 30,
+        "range": 220,
+        "firerate": 1,
+        "projectile": "missile"
+    }
+}

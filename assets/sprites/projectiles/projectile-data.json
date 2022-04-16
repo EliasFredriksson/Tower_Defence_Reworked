@@ -1,0 +1,34 @@
+{
+    "bullet": {
+        "image": "Bullet_Cannon.png",
+        "size": [10, 15],
+        "speed": 3,
+        "damage": 1,
+        "pierce": 2,
+        "max-distance": 200,
+        "collision-radius": 10,
+        "aoe-radius": 10
+    },
+
+    "bullet_mg": {
+        "image": "Bullet_MG.png",
+        "size": [15, 18],
+        "speed": 5,
+        "damage": 1,
+        "pierce": 0,
+        "max-distance": 150,
+        "collision-radius": 10,
+        "aoe-radius": 10
+    },
+
+    "missile": {
+        "image": "Missile.png",
+        "size": [30, 60],
+        "speed": 1.4,
+        "damage": 1,
+        "pierce": 0,
+        "max-distance": 400,
+        "collision-radius": 20,
+        "aoe-radius": 75
+    }
+}
