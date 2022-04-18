@@ -9,8 +9,17 @@ class Game():
         pygame.init()
         pygame.display.set_caption(WINDOW_NAME)
         self.monitor_info = pygame.display.Info()
-        self.SCREEN_WIDTH = int(self.monitor_info.current_w * WINDOW_SIZE_START_SCALE)
-        self.SCREEN_HEIGHT = int(self.monitor_info.current_h * WINDOW_SIZE_START_SCALE)
+
+        ##### TEMPORARY #####
+        # self.SCREEN_WIDTH = int(self.monitor_info.current_w * WINDOW_SIZE_START_SCALE)
+        # self.SCREEN_HEIGHT = int(self.monitor_info.current_h * WINDOW_SIZE_START_SCALE)
+        #
+        # BUG
+        # Hitboxes (rect) does not scale properly.
+        self.SCREEN_WIDTH = GAME_WIDTH
+        self.SCREEN_HEIGHT = GAME_HEIGHT
+        #####################
+
         self.GAME_WIDTH = GAME_WIDTH
         self.GAME_HEIGHT = GAME_HEIGHT
         self.main_canvas = pygame.Surface((self.GAME_WIDTH, self.GAME_HEIGHT))
@@ -187,6 +196,7 @@ class Game():
 
         # FONTS
         self.FONT = pygame.font.Font(os.path.join(self.FONTS_DIR, "PressStart2P-vaV7.ttf"), 48)
+        self.FONT_PATH = os.path.join(self.FONTS_DIR, "PressStart2P-vaV7.ttf")
 
         # ENEMIES
         self.ENEMY_DATA = json.load(open(os.path.join(self.SPRITES_DIR, "enemies/enemy-data.json")))
@@ -217,6 +227,16 @@ class Game():
 
         filePath = "towers/Tower.png"
         self.TOWER_BASE_IMAGE = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
+
+        # TOWER MENU
+        filePath = "tower_menu/Tower-Border.png"
+        self.TOWER_MENU_BORDER = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
+
+        filePath = "tower_menu/Tower-Background.png"
+        self.TOWER_MENU_BACKGROUND = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
+
+        filePath = "tower_menu/Menu-Item-Background.png"
+        self.TOWER_MENU_ITEM_BACKGROUND = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
 
     def load_states(self):
         ### Load all states and add title_screen state to stack ###

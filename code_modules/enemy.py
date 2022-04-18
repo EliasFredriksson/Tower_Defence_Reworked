@@ -82,14 +82,14 @@ class Enemy():
         self.killing_blow_projectile = projectileHitList
         self.POPPED = True 
       
-    def spawn(self):
+    def spawn(self, add_enemy):
         if(self.health > 0):
             newEnemy = None
-            for enemy in self.game.enemyData:
-                if self.game.enemyData[enemy]["health"] == self.health:
+            for enemy in self.game.ENEMY_DATA:
+                if self.game.ENEMY_DATA[enemy]["health"] == self.health:
                     newEnemy = enemy
                     break
             for i in range(self.new_balloon_amount):
-                newEnemyId = self.game.add_enemy(newEnemy, self.agent.fMarker, (i*-1))
+                newEnemyId = add_enemy(newEnemy, self.agent.fMarker, (i*-1))
                 self.killing_blow_projectile.append(newEnemyId)
     

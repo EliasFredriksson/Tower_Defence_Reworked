@@ -5,74 +5,78 @@ from code_modules.quad_tree.quad_circle import QuadCircle
 from settings import *
 from code_modules.collision_functions import Circle
 from code_modules.enemy import Enemy
-from code_modules.pointer_list import PointerElement
 
 
 class Projectile:
-    def __init__(self, type, game):
+    def __init__(self, type, game, quad_tree):
         self.game = game
+        self.quad_tree = quad_tree
+
+        # BASE INFO
         self.type = type
+
+        # SETTINGS
         self.DEBUG = True
-
-        self.firePoint = pygame.Vector2
-        self.target = pygame.Vector2
-
-        self.pos = pygame.Vector2
-        self.direction = pygame.Vector2
-
-        self.speed = self.game.projectileData[self.type]["speed"]
-        self.damage = self.game.projectileData[self.type]["damage"]
-        self.pierce = self.game.projectileData[self.type]["pierce"]
-        self.maxDistance = self.game.projectileData[self.type]["max-distance"]
-        self.aoe = self.game.projectileData[self.type]["aoe-radius"]
-
-        self.size = self.game.projectileData[self.type]["size"]
-        self.image = pygame.transform.scale(
-            self.game.projectileImages[self.type],
-            (self.size[0], self.size[1])
-        )
-        self.imageAngle = 0
-
-
-        self.t = 0
-        self.REACHEDMAXDISTANCE = False
-        self.calculatedTarget = pygame.Vector2
-
-        self.collision = None
-
+        self.REACHED_MAX_DISTANCE = False
         self.DEPLETED = False
 
-        self.hitBalloons = []
+        # TRAVEL
+        self.fire_point = pygame.Vector2
+        self.target = pygame.Vector2
+        self.pos = pygame.Vector2
+        self.direction = pygame.Vector2
+        self.travel_procent = 0  # Number between 0 and 1, represents where along the travel line the projectile is
 
-    
+        # PROJECTILE DATA
+        self.speed = self.game.PROJECTILE_DATA[self.type]["speed"]
+        self.damage = self.game.PROJECTILE_DATA[self.type]["damage"]
+        self.pierce = self.game.PROJECTILE_DATA[self.type]["pierce"]
+        self.max_distance = self.game.PROJECTILE_DATA[self.type]["max-distance"]
+        self.aoe = self.game.PROJECTILE_DATA[self.type]["aoe-radius"]
+        self.size = self.game.PROJECTILE_DATA[self.type]["size"]
 
-    def update(self, deltaTime, ballonQuadTree: QuadTree):
-        if self.t == 1:
-            self.REACHEDMAXDISTANCE = True
+        # GRAPHICS
+        self.image = pygame.transform.scale(
+            self.game.PROJECTILE_IMAGES[self.type],
+            (self.size[0], self.size[1])
+        )
+        self.image_angle = 0
+
+        # OTHER
+        self.calculated_target_pos = pygame.Vector2
+        self.collision = None
+        self.hit_balloons = []
+
+    def update(self, deltaTime, actions):
+        if self.travel_procent == 1:
+            self.REACHED_MAX_DISTANCE = True
             self.collision = None
         else:
-            self.collision = self.__getCollision()
+            self.collision = self.__get_collision()
 
             #########################
-            tempPosBefore = pygame.Vector2.lerp(self.firePoint, self.calculatedTarget, self.t)
-            self.t += self.speed * deltaTime
-            if self.t > 1:
-                self.t = 1
-            tempPosAfter = pygame.Vector2.lerp(self.firePoint, self.calculatedTarget, self.t)
-
+            tempPosBefore = pygame.Vector2.lerp(self.fire_point, self.calculated_target_pos, self.travel_procent)
+            self.travel_procent += self.speed * deltaTime
+            if self.travel_procent > 1:
+                self.travel_procent = 1
+            tempPosAfter = pygame.Vector2.lerp(self.fire_point, self.calculated_target_pos, self.travel_procent)
+            #
             #### LINEAR INTERPOLATION NEEDED TO CALC IF COLLIDED DURING TRAVLE ###
+            #
+            #
+            #
+            #######################################################################
                     
             self.pos = tempPosAfter
-            queryRange = QuadCircle(self.collision.pos.x, self.collision.pos.y, self.collision.radius)
-            balloonsCollided = ballonQuadTree.query(queryRange)
+            query_range = QuadCircle(self.collision.pos.x, self.collision.pos.y, self.collision.radius)
+            balloons_collided = self.quad_tree.query(query_range)
 
-            if len(balloonsCollided) > 0:
-                self.__doDamageToBalloons(ballonQuadTree)
-                
+            if len(balloons_collided) > 0:
+                self.__do_damage_to_balloons()
 
-    def draw(self, canvas):
+    def render(self, canvas):
         ### THE BULLET ###
-        rotatedImage = pygame.transform.rotate(self.image, self.imageAngle)
+        rotatedImage = pygame.transform.rotate(self.image, self.image_angle)
         canvas.blit(rotatedImage,(self.pos.x - rotatedImage.get_width()/2,
                                 self.pos.y - rotatedImage.get_height()/2)
         )
@@ -85,83 +89,56 @@ class Projectile:
             pygame.draw.circle(canvas, (170,0,0), self.collision.pos, self.aoe, 1)
         
             ### PROJECTILE PATH ###
-            pygame.draw.line(canvas, (255,0,0), self.firePoint, self.calculatedTarget, 2)
+            pygame.draw.line(canvas, (255,0,0), self.fire_point, self.calculated_target_pos, 2)
 
             ### MAX TRAVLE DISTANCE ###
-            pygame.draw.circle(canvas, (255,0,255), self.calculatedTarget, 10)
+            pygame.draw.circle(canvas, (255,0,255), self.calculated_target_pos, 10)
 
-    def shoot(self, target, pos, angle, aim_offset):
-        self.target = target.agent.getPos(aim_offset)
-        self.firePoint = pos
-        self.pos = pos
+    def shoot(self, target, start_pos, angle, aim_offset):
+        # Fetch target position
+        self.target = target.agent.get_pos(aim_offset)
+        # Set fire_point and self position to given start position
+        self.fire_point = start_pos
+        self.pos = start_pos
 
-        direction = self.firePoint - self.target
+        # Calculate the direction by subtracting the vectors
+        direction = self.fire_point - self.target
         direction = direction.normalize()
 
-        self.calculatedTarget = (pygame.Vector2(self.firePoint)
-                                - direction * (self.maxDistance))
+        # Calculate target position by normalizing the direction and increasing the length to self max distance.
+        self.calculated_target_pos = (pygame.Vector2(self.fire_point)
+                                - direction * (self.max_distance))
       
-        self.imageAngle = angle
+        # Update the image angle
+        self.image_angle = angle
 
-    def __doDamageToBalloons(self, ballonQuadTree):
-        queryRange = QuadCircle(self.collision.pos.x, self.collision.pos.y, self.aoe)
-        balloonsInAOE = ballonQuadTree.query(queryRange)
-        #print("IN AOE",balloonsInAOE)
-        hitBalloon = False
-        for point in balloonsInAOE:
+    def __do_damage_to_balloons(self):
+        query_range = QuadCircle(self.collision.pos.x, self.collision.pos.y, self.aoe)
+        balloons_in_AOE = self.quad_tree.query(query_range)
+        for point in balloons_in_AOE:
+            hit_balloon = False
             balloon = point.userData
 
-            if(balloon.id not in self.hitBalloons):
-                balloon.takeDamage(self.damage, self.hitBalloons)
-                hitBalloon = True
-                self.hitBalloons.append(balloon.id)
-            ### PSEUDO CODE ###
-            # ballon.damage(self.damage) ->
-            # ballon.spawn() -> spawn balloons according to the damage taken
-        if hitBalloon:
+            # If ballon in AOE has not already been hit, damage it and add it to list of hit balloons.
+            if(balloon.id not in self.hit_balloons):
+                balloon.take_damage(self.damage, self.hit_balloons)
+                hit_balloon = True
+                self.hit_balloons.append(balloon.id)
+        
+        # Decrease pierce
+        if hit_balloon:
             if self.pierce >= 0:
                 self.pierce -= 1
 
+        # If pierce has run out, its depleted and shall be removed.
         if self.pierce < 0:
             self.DEPLETED = True
     
-    def __getCollision(self):
+    def __get_collision(self):
         return Circle(
             pygame.Vector2(self.pos),
-            self.game.projectileData[self.type]["collision-radius"]
+            self.game.PROJECTILE_DATA[self.type]["collision-radius"]
             )
-
-    # def __isCollideWithBalloon(self, pos: pygame.Vector2, velocity: pygame.Vector2, balloon):
-    #     start = pos
-    #     end = pos + velocity
-
-    #     insideBefore = isCollidePointVsCircle(start, balloon.collision)
-    #     insideAfter = isCollidePointVsCircle(end, balloon.collision)
-
-    #     if insideAfter or insideBefore:
-    #         return False
-        
-    #     lenSquared = getDistanceSquaredPointVsPoint(start, end)
-        
-    #     bPos = balloon.agent.getPos()
-
-    #     dot = (((bPos.x - start.x) * (end.x - start.x)) + ((bPos.y - start.y)*(end.y - start.y))) / lenSquared
-
-    #     closestX = start.x + (dot * (end.x - start.x))
-    #     closestY = start.y + (dot * (end.y - start.y))
-
-    #     pygame.draw.circle(canvas, (0,0,255), (closestX, closestY), 10)
-
-    #     onSegment = isCollidePointVsLine(start, end, pygame.Vector2(closestX, closestY))
-    #     if not onSegment:
-    #         return False
-
-    #     closestCircle = Circle(pygame.Vector2(closestX, closestY), self.collision.radius)
-
-    #     if isCollideCircleVsCircle(closestCircle, balloon.collision):
-    #         return True
-    #     return False
-
         
 
     

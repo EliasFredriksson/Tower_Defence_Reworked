@@ -1,10 +1,8 @@
-import pygame, json, math
+import pygame, math
 from settings import *
 from enum import Enum
 from code_modules.collision_functions import * 
-from code_modules.pointer_list import PointerElement
-from code_modules.projectile import Projectile
-from code_modules.enemy import Enemy
+from code_modules.linked_list import LinkedList
 
 
 ############################
@@ -17,54 +15,62 @@ class Target(Enum):
 
 
 class Tower():
-    def __init__(self, name, game):
+    def __init__(self, name, game, projectile_func):
         self.game = game
+        self.projectile_func = projectile_func
+
+        # BASE INFO
         self.name = name
-
         self.pos = pygame.Vector2(-600,-600)
-
-        self.towerSize = game.towerData[self.name]["towerSize"]
-        self.baseSize = game.towerData[self.name]["baseSize"]
-        self.image = pygame.transform.rotozoom(game.towerImages[self.name], 0, self.towerSize)
-        self.base = pygame.transform.rotozoom(game.towerBaseImage, 0, self.baseSize)
-
-        self.collision = Circle(self.pos, self.base.get_width() / 2)
-        self.SHOWHITBOX = False
-
-        self.range = Circle(self.pos, game.towerData[self.name]["range"])
-        self.rangeImg = pygame.transform.scale(game.towerRangeImage, (self.range.radius * 2 + 5, self.range.radius * 2 + 5))
-        
-        self.attackType = game.towerData[self.name]["projectile"]
-        self.attackProjectileSpeed = game.ProjectileData[self.attackType]["speed"]
-        self.projectilesStarterPointer = PointerElement()
-
-        self.fireRate = game.towerData[self.name]["firerate"]
-        self.fireRateCounter = 0
-
         self.angle = 0
 
-        self.prefferedTarget = Target.FIRST
-        self.currentTarget = -1
-        
-        self.SHOWRANGE = False  #If show range
-        self.SELECTED = False   #If show info about tower
-        self.PLACED = False     #If you can move it around
-        self.SOLD = False       #If you have sold the tower
+        # SETTINGS
+        self.SHOWHITBOX = False             # If show tower hitbox
+        self.SHOWRANGE = False              # If show range
+        self.SELECTED = False               # If show info about tower
+        self.PLACED = False                 # If you can move it around
+        self.SOLD = False                   # If you have sold the tower
+        self.AIM_OFFSET = 0.05              # Aim offset
+        self.prefferedTarget = Target.FIRST # Prefered target
 
-        self.AIM_OFFSET = 0.05
+        # TOWER DATA
+        self.towerSize = self.game.TOWER_DATA[self.name]["towerSize"]
+        self.baseSize = self.game.TOWER_DATA[self.name]["baseSize"]
+        self.range = Circle(self.pos, self.game.TOWER_DATA[self.name]["range"])
+        self.attack_type = self.game.TOWER_DATA[self.name]["projectile"]
+        self.attack_projectile_speed = self.game.PROJECTILE_DATA[self.attack_type]["speed"]
+        self.fireRate = self.game.TOWER_DATA[self.name]["firerate"]
 
+        # GRAPHICS
+        self.image = pygame.transform.rotozoom(self.game.TOWER_IMAGES[self.name], 0, self.towerSize)
+        self.base = pygame.transform.rotozoom(self.game.TOWER_BASE_IMAGE, 0, self.baseSize)
+        self.rangeImg = pygame.transform.scale(self.game.TOWER_RANGE_IMAGE, (self.range.radius * 2 + 5, self.range.radius * 2 + 5))
+
+
+        # OTHER
+        self.projectile_list = LinkedList()
+        self.collision = Circle(self.pos, self.base.get_width() / 2)
+
+        #self.projectilesStarterPointer = PointerElement()
+        self.current_target = -1
         self.balloons_in_range = []
+        self.fire_rate_counter = 0
+
      
 
 
-    def update(self, deltaTime, balloonQuadTree):
+    def update(self, delta_time, actions, balloon_quad_tree):
         if self.PLACED:
-            self.bQuadTree = balloonQuadTree
-            self.currentTarget = self.__getTargetedBalloon()
-            self.__tryToAttack(deltaTime)
-            self.__projectilesUpdate(self.projectilesStarterPointer, deltaTime, balloonQuadTree)
+            self.current_target = self.__get_targeted_balloon()
+            self.__try_to_attack(delta_time)
+            # self.__update_projectiles(delta_time, balloon_quad_tree)
+        else:
+            if actions["MOUSE_RIGHT"]:
+                self.PLACED = True
+            self.pos.update(actions["MOUSE_POS"])
+            self.SHOWRANGE = True       
 
-    def draw(self, canvas):
+    def render(self, canvas):
         ### DRAW INFO IF SELECTED ###
         if self.SELECTED or self.SHOWRANGE:
             canvas.blit(self.rangeImg, (self.pos.x - self.rangeImg.get_width()/2,
@@ -81,8 +87,6 @@ class Tower():
                                 self.pos.y - rotatedImage.get_height()/2)
         )
 
-        self.__projectilesDraw(self.projectilesStarterPointer, canvas)
-
         ### DRAW HITBOX ###
         if self.SHOWHITBOX:
             pygame.draw.circle(
@@ -91,106 +95,75 @@ class Tower():
                 self.collision.pos,
                 self.collision.radius,
                 2
-            )
-   
-    def tryMoveTower(self, mousePos):
-        if not self.PLACED:
-            self.pos.update(mousePos)
-            self.SHOWRANGE = True
-    def __tryToAttack(self, deltaTime):
-        if self.currentTarget != -1:
-            if self.fireRateCounter < 0:
-                self.__turnToTarget(self.currentTarget)
-                self.fireRateCounter = self.fireRate
+            )       
 
-                tempProjectile = PointerElement()
-                tempProjectile.setItem(Projectile(self.attackType, self.game))
-                tempProjectile.item.shoot(self.currentTarget, self.pos, self.angle, self.AIM_OFFSET)
-
-                if self.projectilesStarterPointer.hasNext:
-                    tempProjectile.setNext(self.projectilesStarterPointer.nextItem)
-                self.projectilesStarterPointer.setNext(tempProjectile) 
-
+    def __try_to_attack(self, deltaTime):
+        if self.current_target != -1:
+            if self.fire_rate_counter < 0:
+                # Turn towards targeted balloon
+                self.__turn_to_target(self.current_target)
+                
+                # Reset the firerate counter
+                self.fire_rate_counter = self.fireRate
+                
+                # Run given projectile function which creates and shoots specified projectile
+                self.projectile_func(self.attack_type, self.current_target, self.pos, self.angle, self.AIM_OFFSET)
             else:
-                self.fireRateCounter -= 1 * deltaTime
+                self.fire_rate_counter -= 1 * deltaTime
         else:
-            if self.fireRateCounter > 0:
-                self.fireRateCounter -= 1 * deltaTime
+            if self.fire_rate_counter > 0:
+                self.fire_rate_counter -= 1 * deltaTime
     
-    def __projectilesUpdate(self, element: PointerElement, deltaTime, bQuadTree):
-        if element.hasItem:
-            element.item.update(deltaTime, bQuadTree)
-
-            if element.item.REACHEDMAXDISTANCE or element.item.DEPLETED:
-                element.remove()
-
-        if element.hasNext:
-            self.__projectilesUpdate(element.nextItem, deltaTime, bQuadTree)
-    def __projectilesDraw(self, element: PointerElement, canvas):
-        if element.hasItem:
-            element.item.draw(canvas)
-
-        if element.hasNext:
-            self.__projectilesDraw(element.nextItem, canvas)
 
     ### ROTATION ###
-    def __getTargetedBalloon(self):
+    def __get_targeted_balloon(self):
         ### PREPARE NUMBER FOR FILTER ###
-        targetBalloon = -1
-        targetFilter = 0
-        strongFirstFilter = 0
+        target_balloon = -1
+        target_filter = 0
+        strong_first_filer = 0
         
         if self.prefferedTarget == Target.FIRST or self.prefferedTarget == Target.STRONG:
-            targetFilter = 0
+            target_filter = 0
         if self.prefferedTarget == Target.LAST or self.prefferedTarget == Target.CLOSE:
-            targetFilter = math.inf
+            target_filter = math.inf
 
         ### PICK PREFFERED BALLOON FROM BALLONS IN RANGE ###
-        for b in self.balloons_in_range:
+        for balloon in self.balloons_in_range:
             ### FIRST ###
             if self.prefferedTarget == Target.FIRST:
-                if b.agent.fMarker >= targetFilter:
-                    targetFilter = b.agent.fMarker
-                    targetBalloon = b
+                if balloon.agent.fMarker >= target_filter:
+                    target_filter = balloon.agent.fMarker
+                    target_balloon = balloon
             ### LAST ###
             if self.prefferedTarget == Target.LAST:
-                if b.agent.fMarker <= targetFilter:
-                    targetFilter = b.agent.fMarker
-                    targetBalloon = b
+                if balloon.agent.fMarker <= target_filter:
+                    target_filter = balloon.agent.fMarker
+                    target_balloon = balloon
 
             ### STRONG ###
             if self.prefferedTarget == Target.STRONG:
-                if b.agent.fMarker >= targetFilter:
-                    if b.value >= strongFirstFilter:
-                        strongFirstFilter = b.value
-                        targetFilter = b.agent.fMarker
-                        targetBalloon = b
+                if balloon.agent.fMarker >= target_filter:
+                    if balloon.value >= strong_first_filer:
+                        strong_first_filer = balloon.value
+                        target_filter = balloon.agent.fMarker
+                        target_balloon = balloon
                         
             ### CLOSE ###
             if self.prefferedTarget == Target.CLOSE:
-                tempDistance = getDistancePointVsPoint(self.pos, b.agent.getPos())
-                if tempDistance <= targetFilter:
-                    targetFilter = tempDistance
-                    targetBalloon = b
+                tempDistance = getDistancePointVsPoint(self.pos, balloon.agent.getPos())
+                if tempDistance <= target_filter:
+                    target_filter = tempDistance
+                    target_balloon = balloon
 
         ### RETURN BALLOON ###
-        if targetBalloon != -1:
-            return targetBalloon 
-        else:
-            return -1
-    def __turnToTarget(self, targetBalloon):
+        return target_balloon
+
+    def __turn_to_target(self, target_balloon):
         radians = math.atan2(
-                targetBalloon.agent.getPos(self.AIM_OFFSET).y - self.pos.y,
-                targetBalloon.agent.getPos(self.AIM_OFFSET).x - self.pos.x
+                target_balloon.agent.get_pos(self.AIM_OFFSET).y - self.pos.y,
+                target_balloon.agent.get_pos(self.AIM_OFFSET).x - self.pos.x
                 )
         angle = -(radians * 180 / math.pi) - 90
         self.angle = angle
-        self.currentTarget = targetBalloon   
+        self.current_target = target_balloon   
 
-    def iteratePointerList(self, element: PointerElement):
-        if element.hasItem:
-            print("NAME: ", element.item.name, "\tID: ", element.item.id)
-            
-        if element.hasNext:
-            self.iteratePointerList(element.nextItem)
-    

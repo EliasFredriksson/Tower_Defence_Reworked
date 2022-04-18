@@ -22,9 +22,12 @@ class LinkedList(object):
                 # If we have a privous node we set that nodes next node equal to currents next node
                 if prev_node:
                     prev_node.set_next(this_node.get_next())
+                    del this_node
                 else:
                 # Otherwise if we dont have a previous node, we are in the root node
+                    this_node.data = None
                     self.root = this_node
+
                 self.size -= 1
                 # We return True to indicate we successfully removed the data
                 return True

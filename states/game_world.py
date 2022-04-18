@@ -1,4 +1,3 @@
-from asyncio import current_task
 import pygame, os, json
 from states.state import State
 from constants import MODE
@@ -8,10 +7,11 @@ from code_modules.quad_tree.quad_circle import QuadCircle
 from code_modules.quad_tree.quadtree import QuadTree
 from code_modules.spline.spline import Spline
 from code_modules.spline.spline_point_2D import Spline_Point2D
-from code_modules.pointer_list import PointerElement
+from code_modules.tower_menu import TowerMenu
 from code_modules.spline.agent import Agent
 from code_modules.enemy import Enemy
 from code_modules.tower import Tower
+from code_modules.projectile import Projectile
 from code_modules.linked_list import LinkedList
 from settings import *
 
@@ -25,7 +25,7 @@ class Game_World(State):
         self.SHOWBACKGROUND = True
         self.border = self.game.LEVEL_BORDER
 
-        self.position = pygame.Vector2(100,0)
+        self.position = pygame.Vector2(0,0)
         self.rect = pygame.Rect(
             self.position.x,
             self.position.y,
@@ -37,14 +37,18 @@ class Game_World(State):
         self.SHOW_PATH = True
         self.SHOW_TOWERS = True
         self.SHOW_BALLOONS = True
+        self.SHOW_PROJECTILES = True
+        self.SHOW_TOWER_MENU = True
         self.IS_PLACING_TOWER = False
-        self.QUAD_TREE_CAPACITY = 4
+        self.QUAD_TREE_CAPACITY = 8
 
         self.BOUNDARY = QuadRectangle(self.rect.x, self.rect.y, self.rect.width, self.rect.height)
-    
+        self.quad_tree = QuadTree(self.BOUNDARY, self.QUAD_TREE_CAPACITY)
+
         self.path = self.__getPath()
-        self.towerList = LinkedList()
-        self.balloonList = LinkedList()
+        self.tower_list = LinkedList()
+        self.balloon_list = LinkedList()
+        self.projectile_list = LinkedList()
         self.enemyIdIterator = 0
     
         self.lives = 100
@@ -52,6 +56,10 @@ class Game_World(State):
 
         self.livesLost = 0
         self.cashLost = 0
+
+        self.tower_menu = TowerMenu(self.game, self.add_tower)
+
+        self.pressed = False
 
 
     ## UPDATE ###
@@ -64,6 +72,7 @@ class Game_World(State):
             self.SHOW_PATH = True
             self.path.update()
 
+        print("SIZE: ", self.tower_list.size, self.balloon_list.size, self.projectile_list.size)
 
         if(actions["ACTION_1"]):
             self.add_enemy("red")
@@ -76,69 +85,98 @@ class Game_World(State):
         if(actions["ACTION_5"]):
             self.add_enemy("pink")
 
-        #Reset QuadTree
+        # if(actions["MOUSE_LEFT"]):
+        #     if not self.pressed:
+        #         self.add_tower("Cannon")
+        #         self.pressed = True
+        
+        # if not actions["MOUSE_LEFT"]:
+        #     self.pressed = False
+
+        # Reset QuadTree
         self.quad_tree = QuadTree(self.BOUNDARY, self.QUAD_TREE_CAPACITY)
 
-        #Update ballons
-        self.__update_ballons(delta_time)
+        # Update Tower Menu
+        self.tower_menu.update(delta_time, actions)
 
-        #Update towers
-        self.__update_towers(delta_time)
+        # Update ballons
+        self.__update_ballons(delta_time, actions)
 
-    def __update_ballons(self, delta_time):
-        current_balloon_node = self.balloonList.root
+        # Update towers
+        self.__update_towers(delta_time, actions)
+
+        # Update projectiles
+        self.__update_projectiles(delta_time, actions)
+
+    def __update_ballons(self, delta_time, actions):
+        current_balloon_node = self.balloon_list.root
         while current_balloon_node:
             #### LOOP THROUGH ALL ITEMS ####
             next_balloon_node = current_balloon_node.get_next()
             balloon = current_balloon_node.get_data()
-            balloon.update(delta_time)
-            # Update Quad Tree
-            self.quad_tree.insert(
-                QuadPoint(
-                    balloon.agent.get_pos().x,
-                    balloon.agent.get_pos().y,
-                    balloon
+            if balloon:
+                balloon.update(delta_time)
+                # Update Quad Tree
+                self.quad_tree.insert(
+                    QuadPoint(
+                        balloon.agent.get_pos().x,
+                        balloon.agent.get_pos().y,
+                        balloon
+                    )
                 )
-            )
-            # Loose life if balloon reached the end
-            if balloon.agent.REACHED_END:
-                self.livesLost += balloon.health
-            # Spawn new balloons if its popped
-            if balloon.POPPED:
-                balloon.spawn(self.addEnemy)
-            # Remove balloon if any above
-            if balloon.agent.REACHED_END or balloon.POPPED:
-                self.balloonList.remove(balloon)
+                # Loose life if balloon reached the end
+                if balloon.agent.REACHED_END:
+                    self.livesLost += balloon.health
+                # Spawn new balloons if its popped
+                if balloon.POPPED:
+                    balloon.spawn(self.add_enemy)
+                # Remove balloon if any above
+                if balloon.agent.REACHED_END or balloon.POPPED:
+                    self.balloon_list.remove(balloon)
             # Advance to next balloon (node)
             current_balloon_node = next_balloon_node
         
-    def __update_towers(self, delta_time):
-        current_tower_node = self.towerList.root
+    def __update_towers(self, delta_time, actions):
+        current_tower_node = self.tower_list.root
         while current_tower_node:
             #### LOOP THROUGH ALL ITEMS ####
             next_tower_node = current_tower_node.get_next()
             tower = current_tower_node.get_data()
-            tower.update(delta_time, self.quad_tree)
 
-            # Create query range equal to the range of the tower
-            query_range = QuadCircle(tower.pos.x, tower.pos.y, tower.range.radius)
-            # Filter out balloons inside the range of the tower
-            quad_points_in_range = self.quad_tree.query(query_range)
+            if tower:
+                tower.update(delta_time, actions, self.quad_tree)
 
-            # Clear all balloons from list of balloons in range
-            tower.balloons_in_range.clear()
-            for point in quad_points_in_range:
-                # Add balloons in range to list
-                tower.balloons_in_range.append(point.userData)
+                # Create query range equal to the range of the tower
+                query_range = QuadCircle(tower.pos.x, tower.pos.y, tower.range.radius)
+                # Filter out balloons inside the range of the tower
+                quad_points_in_range = self.quad_tree.query(query_range)
 
-            if tower.SOLD:
-                self.towerList.remove(tower)
+                # Clear all balloons from list of balloons in range
+                tower.balloons_in_range.clear()
+                for point in quad_points_in_range:
+                    # Add balloons in range to list
+                    tower.balloons_in_range.append(point.userData)
+
+                if tower.SOLD:
+                    self.tower_list.remove(tower)
 
             # Advance to next tower (node)
             current_tower_node = next_tower_node
 
+    def __update_projectiles(self, delta_time, actions):
+        current_projectile_node = self.projectile_list.root
+        while current_projectile_node:
+            next_projectile_node = current_projectile_node.get_next()
+            # Get current projectile and update it
+            projectile = current_projectile_node.get_data()
+            if projectile:
+                projectile.update(delta_time, self.quad_tree)
+                if projectile.REACHED_MAX_DISTANCE or projectile.DEPLETED:
+                    self.projectile_list.remove(projectile)
+                
+            current_projectile_node = next_projectile_node
 
-     ### DRAW ###
+    ### RENDER ###
     def render(self, canvas):
         # DRAW ANIMATIONS
         #self.animations.get("fire").draw(canvas)
@@ -154,21 +192,30 @@ class Game_World(State):
         # DRAW BALLONS
         if self.SHOW_BALLOONS:
             #self.__drawPointerList(canvas)
-            self.__draw_list(self.balloonList, canvas)
-    
+            self.__draw_list(self.balloon_list, canvas)
 
         # DRAW TOWERS
         if self.SHOW_TOWERS:
             #self.__drawPointerList(self.towersStartPointer, canvas)
-            self.__draw_list(self.towerList, canvas)
+            self.__draw_list(self.tower_list, canvas)
+
+        # DRAW PROJECTILES
+        if self.SHOW_PROJECTILES:
+            self.__draw_list(self.projectile_list, canvas)
+
+        if self.SHOW_TOWER_MENU:
+            self.tower_menu.render(canvas)
 
         # DRAW LEVEL BORDER
         canvas.blit(self.border, self.position)
 
     def __draw_list(self, list, canvas):
         current_entry = list.root
+        #print("CURRET PROJECTILE: ", current_entry.get_data())
         while current_entry:
-            current_entry.get_data().render(canvas)
+            data = current_entry.get_data()
+            if data:
+                data.render(canvas)
             current_entry = current_entry.get_next()
   
     def add_enemy(self, whichEnemy, tPrevious = 0, offset = 0):
@@ -186,7 +233,7 @@ class Game_World(State):
             whichEnemy,
             self.enemyIdIterator
             )
-        self.balloonList.add(newEnemy)
+        self.balloon_list.add(newEnemy)
         self.enemyIdIterator += 1
         self.enemyIdIterator += 1
 
@@ -208,19 +255,14 @@ class Game_World(State):
 
     def add_tower(self, whichTower):
         # CREATE THE TOWER
-        new_tower = Tower(whichTower, self.game)
+        new_tower = Tower(whichTower, self.game, self.add_projectile)
         # ADD THE TOWER TO LIST
-        self.towerList.add(new_tower)
-        # # CREATE THE TOWER
-        # tower = PointerElement()
-        # tower.setItem(Tower(whichTower, self.game))
-
-        # # IF ANY OTHER TOWERS EXISTS
-        # if self.towersStartPointer.hasNext:
-        #     tower.setNext(self.towersStartPointer.nextItem)
-        
-        # # ADD THE TOWER
-        # self.towersStartPointer.setNext(tower)
+        self.tower_list.add(new_tower)
+   
+    def add_projectile(self, attack_type, target, start_pos, angle, aim_offset):
+        new_projectile = Projectile(attack_type, self.game, self.quad_tree)
+        new_projectile.shoot(target, start_pos, angle, aim_offset)
+        self.projectile_list.add(new_projectile)
 
 
     ### PART OF CONSTRUCTION ###
@@ -235,13 +277,14 @@ class Game_World(State):
         path.update()
         return path
 
-
+    ### STATES ###
     def enter_state(self):
         super().enter_state()
 
     def exit_state(self):
         super().exit_state()
 
+    ### EXTRA ASSETS LOADING ###
     def load_assets(self):
         ### LOAD ASSETS BEFORE CALLING super().load_assets() ###
         print("GAME STATE LOADING")
