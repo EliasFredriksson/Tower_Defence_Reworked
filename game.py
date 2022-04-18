@@ -160,7 +160,7 @@ class Game():
 
     def draw_text(self, surface, text, color, x, y):
         ### Helper function to draw text ###
-        text_surface = self.font.render(text, True, color)
+        text_surface = self.FONT.render(text, True, color)
         text_rect = text_surface.get_rect()
         text_rect.center = (x,y)
         surface.blit(text_surface, text_rect)
@@ -168,55 +168,55 @@ class Game():
     def load_assets(self):
         ### Load all assets folders and fonts ###
         # FOLDERS
-        self.assets_dir = os.path.join(ROOT_DIR, "assets")
-        self.sprites_dir = os.path.join(self.assets_dir, "sprites")
-        self.sounds_dir = os.path.join(self.assets_dir, "sound")
-        self.levels_dir = os.path.join(self.assets_dir, "levels")
-        self.fonts_dir = os.path.join(self.assets_dir, "fonts")
+        self.ASSETS_DIR = os.path.join(ROOT_DIR, "assets")
+        self.SPRITES_DIR = os.path.join(self.ASSETS_DIR, "sprites")
+        self.SOUNDS_DIR = os.path.join(self.ASSETS_DIR, "sound")
+        self.LEVELS_DIR = os.path.join(self.ASSETS_DIR, "levels")
+        self.FONTS_DIR = os.path.join(self.ASSETS_DIR, "fonts")
 
         # LEVELS
-        self.levelData = json.load(open(os.path.join(self.sprites_dir, "levels/levels-data.json")))
-        self.levelImages = {}
-        for level in self.levelData:
-            filePath = "levels/backgrounds/" + self.levelData[level]["background"]
-            loadedImg = pygame.image.load(os.path.join(self.sprites_dir, filePath))
-            self.levelImages[level] = loadedImg
+        self.LEVEL_DATA = json.load(open(os.path.join(self.SPRITES_DIR, "levels/levels-data.json")))
+        self.LEVEL_IMAGES = {}
+        for level in self.LEVEL_DATA:
+            filePath = "levels/backgrounds/" + self.LEVEL_DATA[level]["background"]
+            loadedImg = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath))
+            self.LEVEL_IMAGES[level] = loadedImg
         
         # BORDERS
-        self.levelBorder = pygame.image.load(os.path.join(self.sprites_dir, "levels/Level-Border.png"))
+        self.LEVEL_BORDER = pygame.image.load(os.path.join(self.SPRITES_DIR, "levels/Level-Border.png"))
 
         # FONTS
-        self.font = pygame.font.Font(os.path.join(self.fonts_dir, "PressStart2P-vaV7.ttf"), 48)
+        self.FONT = pygame.font.Font(os.path.join(self.FONTS_DIR, "PressStart2P-vaV7.ttf"), 48)
 
         # ENEMIES
-        self.enemyData = json.load(open(os.path.join(self.sprites_dir, "enemies/enemy-data.json")))
-        self.enemyImages = {}
-        for enemy in self.enemyData:
-            filePath = "enemies/" + self.enemyData[enemy]["image"]
-            loadedImg = pygame.image.load(os.path.join(self.sprites_dir, filePath)).convert_alpha()
-            self.enemyImages[enemy] = loadedImg
+        self.ENEMY_DATA = json.load(open(os.path.join(self.SPRITES_DIR, "enemies/enemy-data.json")))
+        self.ENEMY_IMAGES = {}
+        for enemy in self.ENEMY_DATA:
+            filePath = "enemies/" + self.ENEMY_DATA[enemy]["image"]
+            loadedImg = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
+            self.ENEMY_IMAGES[enemy] = loadedImg
         
         # PROJECTILES
-        self.projectileData = json.load(open(os.path.join(self.sprites_dir, "projectiles/projectile-data.json")))   
-        self.projectileImages = {}
-        for projectile in self.projectileData:
-            filePath = "projectiles/" + self.projectileData[projectile]["image"]
-            loadedImg = pygame.image.load(os.path.join(self.sprites_dir, filePath)).convert_alpha()
-            self.projectileImages[projectile] = loadedImg
+        self.PROJECTILE_DATA = json.load(open(os.path.join(self.SPRITES_DIR, "projectiles/projectile-data.json")))   
+        self.PROJECTILE_IMAGES = {}
+        for projectile in self.PROJECTILE_DATA:
+            filePath = "projectiles/" + self.PROJECTILE_DATA[projectile]["image"]
+            loadedImg = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
+            self.PROJECTILE_IMAGES[projectile] = loadedImg
 
         # TOWERS
-        self.towerData = json.load(open(os.path.join(self.sprites_dir, "towers/tower-data.json")))
-        self.towerImages = {}
-        for tower in self.towerData:
-            filePath = "towers/" + self.towerData[tower]["image"]
-            loadedImg = pygame.image.load(os.path.join(self.sprites_dir, filePath)).convert_alpha()
-            self.towerImages[tower] = loadedImg  
+        self.TOWER_DATA = json.load(open(os.path.join(self.SPRITES_DIR, "towers/tower-data.json")))
+        self.TOWER_IMAGES = {}
+        for tower in self.TOWER_DATA:
+            filePath = "towers/" + self.TOWER_DATA[tower]["image"]
+            loadedImg = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
+            self.TOWER_IMAGES[tower] = loadedImg  
 
         filePath = "towers/Range-border.png"
-        self.towerRangeImage = pygame.image.load(os.path.join(self.sprites_dir, filePath)).convert_alpha()
+        self.TOWER_RANGE_IMAGE = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
 
         filePath = "towers/Tower.png"
-        self.towerBaseImage = pygame.image.load(os.path.join(self.sprites_dir, filePath)).convert_alpha()
+        self.TOWER_BASE_IMAGE = pygame.image.load(os.path.join(self.SPRITES_DIR, filePath)).convert_alpha()
 
     def load_states(self):
         ### Load all states and add title_screen state to stack ###

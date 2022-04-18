@@ -4,9 +4,12 @@ from constants import COLORS
 
 class Title_Screen(State):
     def __init__(self, game):
-        super().__init__(game)
+        ### WE SEND True TO TELL THE STATE MACHINE THAT NEW ASSETS NEEDS LOADING ###
+        super().__init__(game, True)
 
     def update(self, delta_time, actions):
+        ### NEEDS TO BE CALLED AT START OF UPDATE FUNCTION TO MAKE SURE NEW ASSETS ARE LOADED ###
+        super().update(delta_time, actions)
         if actions["START"]:
             new_state = Game_World(self.game)
             new_state.enter_state()
@@ -23,3 +26,7 @@ class Title_Screen(State):
     def exit_state(self):
         super().exit_state()
     
+    def load_assets(self):
+        ### LOAD ASSETS BEFORE CALLING super().load_assets() ###
+        print("TITLE SCREEN")
+        super().load_assets()

@@ -46,13 +46,14 @@ class Tower():
         self.prefferedTarget = Target.FIRST
         self.currentTarget = -1
         
-        self.SHOWRANGE = False  #IF show range
-        self.SELECTED = False   #IF show info about tower
-        self.PLACED = False     #IF you can move it around
+        self.SHOWRANGE = False  #If show range
+        self.SELECTED = False   #If show info about tower
+        self.PLACED = False     #If you can move it around
+        self.SOLD = False       #If you have sold the tower
 
         self.AIM_OFFSET = 0.05
 
-        self.balloonsInRange = []
+        self.balloons_in_range = []
      
 
 
@@ -145,7 +146,7 @@ class Tower():
             targetFilter = math.inf
 
         ### PICK PREFFERED BALLOON FROM BALLONS IN RANGE ###
-        for b in self.balloonsInRange:
+        for b in self.balloons_in_range:
             ### FIRST ###
             if self.prefferedTarget == Target.FIRST:
                 if b.agent.fMarker >= targetFilter:

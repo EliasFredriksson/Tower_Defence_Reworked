@@ -12,13 +12,11 @@ class Agent:
         self.nSelectedPoint = 0
         self.fMarker = fMarker
 
-        self.REACHEDEND = False
-
+        self.REACHED_END = False
         self.FORWARD = False
         self.BACKWARD = False
-
-        self.LINESIZE = 20
-        self.LINEWIDTH = 8
+        self.LINE_SIZE = 20
+        self.LINE_WIDTH = 8
         ############# DEBUG FONT #############
         ### THE FONT IS USED TO SHOW fOffset AND fMarker ###
         self.font = pygame.font.SysFont(None, 20)
@@ -32,17 +30,16 @@ class Agent:
 
         if self.fMarker >= self.path.totalLineLength - speed * deltaTime:
             #self.fMarker -= self.path.totalLineLength
-            self.REACHEDEND = True
+            self.REACHED_END = True
 
-        if not self.REACHEDEND:
+        if not self.REACHED_END:
             self.fMarker += speed * deltaTime
             
         if self.fMarker < 0:
             self.fMarker += self.path.totalLineLength
 
-    def draw(self, canvas):
+    def render(self, canvas):
         fOffset = self.path.getNormalizedOffset(self.fMarker)
-
         p1 = self.path.getSplinePoint(fOffset)
         g1 = self.path.getSplineGradient(fOffset) 
 
@@ -50,9 +47,9 @@ class Agent:
         # r = radiance
         r = math.atan2(-g1.y, g1.x)
         pygame.draw.line(canvas, (0,0,255), 
-                    (self.LINESIZE*math.sin(r) + p1.x, self.LINESIZE*math.cos(r) + p1.y),
+                    (self.LINE_SIZE*math.sin(r) + p1.x, self.LINE_SIZE*math.cos(r) + p1.y),
                     (-self.LINESIZE*math.sin(r) + p1.x, -self.LINESIZE*math.cos(r) + p1.y),
-                    self.LINEWIDTH)
+                    self.LINE_WIDTH)
 
         ### DRAW OFFSET AND MARKEKR ###
         tempImg = self.font.render(str(fOffset), True, (255,255,255))
@@ -60,7 +57,7 @@ class Agent:
         tempImg = self.font.render(str(self.fMarker), True, (255,255,255))
         canvas.blit(tempImg,(10, 30) )
 
-    def getPos(self, offset = 0):
+    def get_pos(self, offset = 0):
         fOffset = self.path.getNormalizedOffset(self.fMarker)
         ### TINY POTENTIAL BUG ###
         # Maybe will go outside what fOffset is allowed to be
