@@ -24,9 +24,9 @@ class LinkedList(object):
                     prev_node.set_next(this_node.get_next())
                     del this_node
                 else:
-                # Otherwise if we dont have a previous node, we are in the root node
-                    this_node.data = None
-                    self.root = this_node
+                # Otherwise if we dont have a previous node, we are in the root node, get node ahead 
+                    self.root = this_node.get_next()
+                    del this_node
 
                 self.size -= 1
                 # We return True to indicate we successfully removed the data

@@ -15,7 +15,7 @@ WINDOW_NAME = "PyGame Template"
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ##### OTHER #####
-TARGET_FPS = 60
+TARGET_FPS = 120
 
 
 TOWERMENU_ITEM_WIDTH = 80

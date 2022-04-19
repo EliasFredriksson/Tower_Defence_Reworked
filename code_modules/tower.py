@@ -59,14 +59,14 @@ class Tower():
      
 
 
-    def update(self, delta_time, actions, balloon_quad_tree):
+    def update(self, delta_time, actions):
         if self.PLACED:
             self.current_target = self.__get_targeted_balloon()
             self.__try_to_attack(delta_time)
-            # self.__update_projectiles(delta_time, balloon_quad_tree)
         else:
             if actions["MOUSE_RIGHT"]:
                 self.PLACED = True
+                self.SHOWRANGE = False
             self.pos.update(actions["MOUSE_POS"])
             self.SHOWRANGE = True       
 

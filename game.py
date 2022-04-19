@@ -1,4 +1,3 @@
-from enum import Enum
 import pygame, os, time, json
 from settings import *
 from constants import MODE
@@ -26,8 +25,6 @@ class Game():
         self.window = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.DOUBLEBUF)
 
         self.running = True
-        self.playing = True
-        self.mode = MODE.PLAY
 
         self.delta_time = 0
         self.prev_time = 0
@@ -37,29 +34,61 @@ class Game():
         self.load_states()
 
         self.actions = {
+            # ARROW KEYS
             "UP": False,
+            "UP_HELD": False,
             "DOWN": False,
+            "DOWN_HELD": False,
             "LEFT": False,
+            "LEFT_HELD": False,
             "RIGHT": False,
+            "RIGHT_HELD": False,
+            # NUMBERS (1-5)
             "ACTION_1": False,
+            "ACTION_1_HELD": False,
             "ACTION_2": False,
+            "ACTION_2_HELD": False,
             "ACTION_3": False,
+            "ACTION_3_HELD": False,
             "ACTION_4": False,
+            "ACTION_4_HELD": False,
             "ACTION_5": False,
+            "ACTION_5_HELD": False,
+            # OTHER
             "START": False,
+            "START_HELD": False,
             "BACK": False,
+            "BACK_HELD": False,
+            # MOUSE
             "MOUSE_LEFT": False,
+            "MOUSE_LEFT_HELD": False,
             "MOUSE_RIGHT": False,
-            "MOUSE_POS": None
+            "MOUSE_RIGHT_HELD": False,
+            "MOUSE_POS": pygame.Vector2(0,0)
         }
+        self.keys_to_reset = []
 
-    def game_loop(self):
+        ### FPS TIMER ###
+        self.clock = pygame.time.Clock()
+
+        ### MODE ###
+        self.mode = MODE.PLAY
+        ### DEBUG SETTINGS ###
+        self.PRINT_INFO = True
+        self.SHOW_INPUT = True
+        self.SHOW_FPS = True
+
+
+    def run(self):
         ### Core game loop ###
-        while self.playing:
+        while self.running:
+            self.clock.tick_busy_loop(TARGET_FPS)
             self.get_delta_time()
             self.get_events()
             self.update()
             self.render()
+            self.reset_keys()
+
  
     def get_events(self):
         ### EVENT HANDLER that updates self.actions ###
@@ -67,88 +96,116 @@ class Game():
             ##### QUIT EVENT #####
             if event.type == pygame.QUIT:
                 self.running = False
-                self.playing = False
             ##### KEYDOWN EVENT #####
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
-                    self.playing = False
-                if event.key == pygame.K_F1:
+                ### TOGGLE DEBUG MODE ###
+                if event.key == pygame.K_d and event.mod & pygame.KMOD_LCTRL:
                     self.switch_mode()
+
                 if event.key == pygame.K_UP:
-                    self.actions["UP"] = True
+                    self.actions["UP_HELD"] = True
+                    self.__action_click("UP")
                 if event.key == pygame.K_DOWN:
-                    self.actions["DOWN"] = True
+                    self.actions["DOWN_HELD"] = True
+                    self.__action_click("DOWN")
                 if event.key == pygame.K_LEFT:
-                    self.actions["LEFT"] = True
+                    self.actions["LEFT_HELD"] = True
+                    self.__action_click("LEFT")
                 if event.key == pygame.K_RIGHT:
-                    self.actions["RIGHT"] = True
+                    self.actions["RIGHT_HELD"] = True
+                    self.__action_click("RIGHT")
 
                 if event.key == pygame.K_BACKSPACE:
-                    self.actions["BACK"] = True
+                    self.actions["BACK_HELD"] = True
+                    self.__action_click("BACK")
                 if event.key == pygame.K_RETURN:
-                    self.actions["START"] = True
+                    self.actions["START_HELD"] = True
+                    self.__action_click("START")
                 
                 if event.key == pygame.K_1:
-                    self.actions["ACTION_1"] = True
+                    self.actions["ACTION_1_HELD"] = True
+                    self.__action_click("ACTION_1")
                 if event.key == pygame.K_2:
-                    self.actions["ACTION_2"] = True
+                    self.actions["ACTION_2_HELD"] = True
+                    self.__action_click("ACTION_2")
                 if event.key == pygame.K_3:
-                    self.actions["ACTION_3"] = True
+                    self.actions["ACTION_3_HELD"] = True
+                    self.__action_click("ACTION_3")
                 if event.key == pygame.K_4:
-                    self.actions["ACTION_4"] = True
+                    self.actions["ACTION_4_HELD"] = True
+                    self.__action_click("ACTION_4")
                 if event.key == pygame.K_5:
-                    self.actions["ACTION_5"] = True
+                    self.actions["ACTION_5_HELD"] = True
+                    self.__action_click("ACTION_5")
 
             ##### KEYUP EVENT #####
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_UP:
-                    self.actions["UP"] = False
+                    self.actions["UP_HELD"] = False
                 if event.key == pygame.K_DOWN:
-                    self.actions["DOWN"] = False
+                    self.actions["DOWN_HELD"] = False
                 if event.key == pygame.K_LEFT:
-                    self.actions["LEFT"] = False
+                    self.actions["LEFT_HELD"] = False
                 if event.key == pygame.K_RIGHT:
-                    self.actions["RIGHT"] = False
+                    self.actions["RIGHT_HELD"] = False
 
                 if event.key == pygame.K_BACKSPACE:
-                    self.actions["BACK"] = False
+                    self.actions["BACK_HELD"] = False
                 if event.key == pygame.K_RETURN:
-                    self.actions["START"] = False
+                    self.actions["START_HELD"] = False
                 
                 if event.key == pygame.K_1:
-                    self.actions["ACTION_1"] = False
+                    self.actions["ACTION_1_HELD"] = False
                 if event.key == pygame.K_2:
-                    self.actions["ACTION_2"] = False
+                    self.actions["ACTION_2_HELD"] = False
                 if event.key == pygame.K_3:
-                    self.actions["ACTION_3"] = False
+                    self.actions["ACTION_3_HELD"] = False
                 if event.key == pygame.K_4:
-                    self.actions["ACTION_4"] = False
+                    self.actions["ACTION_4_HELD"] = False
                 if event.key == pygame.K_5:
-                    self.actions["ACTION_5"] = False             
+                    self.actions["ACTION_5_HELD"] = False             
 
             ##### MOUSE MOTION EVENT #####
             if event.type == pygame.MOUSEMOTION:
                 mouse_pos = pygame.mouse.get_pos()
                 self.actions["MOUSE_POS"] = pygame.Vector2(mouse_pos[0], mouse_pos[1])
+                
             
             ##### MOUSE BUTTON DOWN #####
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    self.actions["MOUSE_LEFT"] = True
+                    self.actions["MOUSE_LEFT_HELD"] = True
+                    self.__action_click("MOUSE_LEFT")
                 if event.button == 3:
-                    self.actions["MOUSE_RIGHT"] = True
+                    self.actions["MOUSE_RIGHT_HELD"] = True
+                    self.__action_click("MOUSE_RIGHT")
 
             ##### MOUSE BUTTON UP #####
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
-                    self.actions["MOUSE_LEFT"] = False
+                    self.actions["MOUSE_LEFT_HELD"] = False
                 if event.button == 3:
-                    self.actions["MOUSE_RIGHT"] = False
+                    self.actions["MOUSE_RIGHT_HELD"] = False
 
     def update(self):
         ### Update whats on top of the state stack ###
         self.state_stack[-1].update(self.delta_time, self.actions)
+        ### PRINT INFO ###
+        
+        
+        if self.mode == MODE.DEBUG:
+            if self.PRINT_INFO:
+                os.system('cls' if os.name=='nt' else 'clear')
+                print("=========================")
+                print("MODE: ", self.mode)
+                print("FPS: ", self.clock.get_fps())
+                print("=========================")
+                print("======== ACTIONS ========")
+                for action in self.actions:
+                    print(action, ": ", self.actions[action])
+                print("=========================")
       
     def render(self):
         ### Render whats on top of the state stack ###
@@ -166,13 +223,6 @@ class Game():
         now_time = time.time()
         self.delta_time = now_time - self.prev_time
         self.prev_time = now_time
-
-    def draw_text(self, surface, text, color, x, y):
-        ### Helper function to draw text ###
-        text_surface = self.FONT.render(text, True, color)
-        text_rect = text_surface.get_rect()
-        text_rect.center = (x,y)
-        surface.blit(text_surface, text_rect)
 
     def load_assets(self):
         ### Load all assets folders and fonts ###
@@ -243,9 +293,14 @@ class Game():
         self.title_screen = Title_Screen(self)
         self.state_stack.append(self.title_screen)
 
-    def reset_keys(self):
+    def reset_all_keys(self):
         for action in self.actions:
             self.actions[action] = False
+
+    def reset_keys(self):
+        for key in self.keys_to_reset:
+            self.actions[key] = False
+        self.keys_to_reset.clear()
 
     def switch_mode(self):
         if self.mode == MODE.PLAY:
@@ -253,7 +308,21 @@ class Game():
         else:
             self.mode = MODE.PLAY
 
+    ### HELPERS ###
+    def draw_text(self, surface, text, color, x, y):
+        ### Helper function to draw text ###
+        text_surface = self.FONT.render(text, True, color)
+        text_rect = text_surface.get_rect()
+        text_rect.center = (x,y)
+        surface.blit(text_surface, text_rect)
+
+    ### PRIVATE HELPERS ###
+    def __action_click(self, whichAction):
+        if not self.actions[whichAction] and self.actions[whichAction + "_HELD"]:
+            self.actions[whichAction] = True
+            self.keys_to_reset.append(whichAction)
+        
+
 if __name__ == "__main__":
     g = Game()
-    while g.running:
-        g.game_loop()
+    g.run()

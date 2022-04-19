@@ -72,7 +72,7 @@ class Game_World(State):
             self.SHOW_PATH = True
             self.path.update()
 
-        print("SIZE: ", self.tower_list.size, self.balloon_list.size, self.projectile_list.size)
+        #print("SIZE: ", self.tower_list.size, self.balloon_list.size, self.projectile_list.size)
 
         if(actions["ACTION_1"]):
             self.add_enemy("red")
@@ -84,14 +84,6 @@ class Game_World(State):
             self.add_enemy("yellow")
         if(actions["ACTION_5"]):
             self.add_enemy("pink")
-
-        # if(actions["MOUSE_LEFT"]):
-        #     if not self.pressed:
-        #         self.add_tower("Cannon")
-        #         self.pressed = True
-        
-        # if not actions["MOUSE_LEFT"]:
-        #     self.pressed = False
 
         # Reset QuadTree
         self.quad_tree = QuadTree(self.BOUNDARY, self.QUAD_TREE_CAPACITY)
@@ -114,25 +106,25 @@ class Game_World(State):
             #### LOOP THROUGH ALL ITEMS ####
             next_balloon_node = current_balloon_node.get_next()
             balloon = current_balloon_node.get_data()
-            if balloon:
-                balloon.update(delta_time)
-                # Update Quad Tree
-                self.quad_tree.insert(
-                    QuadPoint(
-                        balloon.agent.get_pos().x,
-                        balloon.agent.get_pos().y,
-                        balloon
-                    )
+            # Update the balloon
+            balloon.update(delta_time)
+            # Update Quad Tree
+            self.quad_tree.insert(
+                QuadPoint(
+                    balloon.agent.get_pos().x,
+                    balloon.agent.get_pos().y,
+                    balloon
                 )
-                # Loose life if balloon reached the end
-                if balloon.agent.REACHED_END:
-                    self.livesLost += balloon.health
-                # Spawn new balloons if its popped
-                if balloon.POPPED:
-                    balloon.spawn(self.add_enemy)
-                # Remove balloon if any above
-                if balloon.agent.REACHED_END or balloon.POPPED:
-                    self.balloon_list.remove(balloon)
+            )
+            # Loose life if balloon reached the end
+            if balloon.agent.REACHED_END:
+                self.livesLost += balloon.health
+            # Spawn new balloons if its popped
+            if balloon.POPPED:
+                balloon.spawn(self.add_enemy)
+            # Remove balloon if any above
+            if balloon.agent.REACHED_END or balloon.POPPED:
+                self.balloon_list.remove(balloon)
             # Advance to next balloon (node)
             current_balloon_node = next_balloon_node
         
@@ -143,22 +135,22 @@ class Game_World(State):
             next_tower_node = current_tower_node.get_next()
             tower = current_tower_node.get_data()
 
-            if tower:
-                tower.update(delta_time, actions, self.quad_tree)
+            # Update the tower
+            tower.update(delta_time, actions)
 
-                # Create query range equal to the range of the tower
-                query_range = QuadCircle(tower.pos.x, tower.pos.y, tower.range.radius)
-                # Filter out balloons inside the range of the tower
-                quad_points_in_range = self.quad_tree.query(query_range)
+            # Create query range equal to the range of the tower
+            query_range = QuadCircle(tower.pos.x, tower.pos.y, tower.range.radius)
+            # Filter out balloons inside the range of the tower
+            quad_points_in_range = self.quad_tree.query(query_range)
 
-                # Clear all balloons from list of balloons in range
-                tower.balloons_in_range.clear()
-                for point in quad_points_in_range:
-                    # Add balloons in range to list
-                    tower.balloons_in_range.append(point.userData)
+            # Clear all balloons from list of balloons in range
+            tower.balloons_in_range.clear()
+            for point in quad_points_in_range:
+                # Add balloons in range to list
+                tower.balloons_in_range.append(point.userData)
 
-                if tower.SOLD:
-                    self.tower_list.remove(tower)
+            if tower.SOLD:
+                self.tower_list.remove(tower)
 
             # Advance to next tower (node)
             current_tower_node = next_tower_node
@@ -169,10 +161,10 @@ class Game_World(State):
             next_projectile_node = current_projectile_node.get_next()
             # Get current projectile and update it
             projectile = current_projectile_node.get_data()
-            if projectile:
-                projectile.update(delta_time, self.quad_tree)
-                if projectile.REACHED_MAX_DISTANCE or projectile.DEPLETED:
-                    self.projectile_list.remove(projectile)
+            # Update the projectile
+            projectile.update(delta_time, self.quad_tree)
+            if projectile.REACHED_MAX_DISTANCE or projectile.DEPLETED:
+                self.projectile_list.remove(projectile)
                 
             current_projectile_node = next_projectile_node
 
