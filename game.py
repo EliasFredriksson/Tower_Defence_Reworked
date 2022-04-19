@@ -34,6 +34,12 @@ class Game():
         self.load_states()
 
         self.actions = {
+            ### ACTIONS ###
+            # Every action has a state and a _HELD state.
+            # The base action acts as a "click" event. Turns true one frame, and next frame becomes false.
+            # It cannot become true again until you have released the key.
+            # The "_HELD" action is true as long as you hold the key down.
+            ###############
             # ARROW KEYS
             "UP": False,
             "UP_HELD": False,
